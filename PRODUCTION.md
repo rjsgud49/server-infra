@@ -3,14 +3,15 @@
 작성일: 2026-09-18  
 서버: Windows (`C:\` 루트에 인프라 + `C:\deploy`에 앱)
 
-지금 **외부에 열려 있는 프로덕션 웹 프로젝트는 2개**다.
+지금 **외부에 열려 있는 프로덕션 웹 프로젝트는 3개**다. Jenkins는 `jenkins.rjsgud.com` Nginx HTTP 프록시까지 넣어 두었고, Cloudflare A레코드가 생기면 HTTPS로 올린다.
 
 | # | 도메인 | 앱 | 배포 경로 | 현재 상태 |
 |---|--------|----|-----------|-----------|
 | 1 | https://forum.rjsgud.com | 포럼 (프론트 Next.js + 백엔드 Spring Boot) | `C:\deploy\forum` | 프로세스 기동 중 (NSSM) |
 | 2 | https://gacha.rjsgud.com | 가챠 수집가 (React + Express) | `C:\deploy\gitjuyoung\송주영` | 프로세스 기동 중 (콘솔 `npm run server`) |
+| 3 | https://study.rjsgud.com | Technical-Blog (Next.js + NestJS) | `C:\deploy\blog` | 프로세스 기동 중 (로그온 작업 `blog-stack`) |
 
-Nginx `server_name` 기준으로도 위 2개만 연결되어 있다.
+Nginx `server_name` 기준으로 포럼·가챠·스터디가 HTTPS로 열려 있고, Jenkins는 `jenkins.rjsgud.com` HTTP 프록시가 들어가 있다.
 
 ---
 
@@ -30,8 +31,12 @@ Nginx  :80 / :443     ← 웹서버 + HTTPS 종료 + 리버스 프록시
   └─ gacha.rjsgud.com
         /          → 127.0.0.1:8787   gacha Express + 정적 dist
 
-MySQL  :3306          ← 공통 DB
-Jenkins :8000         ← CI (Nginx에 안 묶여 있음, 공개 사이트가 아님)
+  └─ study.rjsgud.com
+        /          → 127.0.0.1:3001   blog-frontend (Next.js)
+        /api       → 127.0.0.1:4000   blog-backend  (NestJS)
+
+MySQL  :3306          ← 공통 DB (forum/gacha/blog)
+Jenkins :8000         ← CI. Nginx `jenkins.rjsgud.com` → 127.0.0.1:8000
 ```
 
 ---
@@ -74,6 +79,28 @@ GitHub: https://github.com/rjsgud49/gitjuyoung.git
 
 ---
 
+## 3. Technical-Blog — `study.rjsgud.com`
+
+경로: `C:\deploy\blog`  
+GitHub: https://github.com/rjsgud49/Technical-Blog.git
+
+| 구분 | 내용 |
+|------|------|
+| 프론트 | Next.js 16, 포트 **3001** (포럼이 3000을 씀) |
+| 백엔드 | NestJS, 포트 **4000**, prefix `/api` |
+| DB | MySQL `react_structure` |
+| 기동 | Jenkins job `technical_blog`가 빌드 후 NSSM `blog-backend` / `blog-frontend` 재시작. 로그온 작업 `blog-stack`은 포트가 비어 있을 때만 보조 기동 |
+| 배포 | `C:\deploy\blog`. `backend/.env`는 git에 없고 서버에만 유지 |
+| NSSM | `blog-backend` (:4000), `blog-frontend` (:3001). Jenkins가 배포할 때마다 재시작 |
+
+관리자 로그인 계정은 `C:\deploy\blog\backend\.env`의 `SEED_ADMIN_USERNAME` / `SEED_ADMIN_PASSWORD`에만 있다.
+
+도메인: `study.rjsgud.com` (A레코드 `220.94.77.88`). HTTPS는 win-acme 자동 갱신 대상.
+
+GitHub `main` 푸시 → Jenkins가 약 5분 안에 받아 빌드하고 `:4000` / `:3001`을 재시작한다.
+
+---
+
 ## 인프라 폴더가 하는 일
 
 `C:\` 바로 아래에 앱이 아니라 **서버 부품**이 모여 있다.
@@ -107,12 +134,14 @@ Node/Java 같은 콘솔 프로그램을 **Windows 서비스**로 등록해서,
 
 흔히 말하는 블루/그린 무중단 배포(교체하는 동안 트래픽을 끊지 않는 것)는 아니다. **항상 켜 두기 / 죽으면 다시 켜기**에 가깝다.
 
-지금 NSSM으로 등록된 서비스는 포럼 2개뿐이다.
+지금 NSSM으로 등록된 서비스:
 
 | 서비스 | 상태 | 시작 유형 |
 |--------|------|-----------|
 | forum-backend | Running | Auto |
 | forum-frontend | Running | Auto |
+| blog-backend | Running | Auto |
+| blog-frontend | Running | Auto |
 
 ### certificate (`C:\certificates`) — ACME 검증 파일 루트
 
@@ -168,12 +197,13 @@ Let’s Encrypt와 대화해서 인증서를 받아 오는 프로그램이다. �
 | 갱신 기록/상태 | `C:\ProgramData\win-acme\` |
 | 자동 갱신 스크립트 | `C:\deploy\server-infra\scripts\` |
 
-발급된 인증서 2개:
+발급된 인증서:
 
 | 도메인 | 검증 경로 | PEM 저장 위치 |
 |--------|-----------|----------------|
 | forum.rjsgud.com | `C:\certificates` | `C:\Nginx\ssl\forum.rjsgud.com-*.pem` |
 | gacha.rjsgud.com | `C:\certificates` | `C:\Nginx\ssl\gacha.rjsgud.com-*.pem` |
+| study.rjsgud.com | `C:\certificates` | `C:\Nginx\ssl\study.rjsgud.com-*.pem` |
 
 Let’s Encrypt 인증서는 90일짜리다. 만료 전에 자동 갱신되도록 Windows 작업 스케줄러가 매일 09:00에 스크립트를 돌린다.
 
@@ -223,12 +253,23 @@ powershell -NoProfile -ExecutionPolicy Bypass -File C:\deploy\server-infra\scrip
 | 3000 | node (NSSM) | 포럼 프론트 |
 | 8081 | java (NSSM) | 포럼 백엔드 |
 | 8787 | node (콘솔) | 가챠 API + 정적 파일 |
+| 4000 | node | Technical-Blog API |
+| 3001 | node | Technical-Blog 프론트 |
 | 3306 | mysqld | MySQL 8.0 |
 | 8000 | java (Jenkins) | Jenkins CI |
 
 Nginx에 안 묶인 것:
 
-- **Jenkins** — Windows 서비스 `Jenkins`, 자동 시작. 공개 웹 프로젝트가 아님.
+- **Jenkins** — Windows 서비스 `Jenkins`, 자동 시작. UI는 `http://127.0.0.1:8000` 및 Nginx `jenkins.rjsgud.com` → `:8000`. 로그인 필요.
+
+Jenkins 잡:
+
+| Job | 저장소 | 트리거 | 배포 |
+|-----|--------|--------|------|
+| `forum_pj` | `rjsgud49/forum-project` | GitHub push | `C:\deploy\forum` (NSSM) |
+| `technical_blog` | `rjsgud49/Technical-Blog` | GitHub push + 5분 SCM 폴링 | `C:\deploy\blog` |
+
+GitHub webhook URL: `http://<서버IP>:8000/github-webhook/`
 - 콘솔 `npm start` → `node src/index.js` 하나 더 떠 있음. Nginx에 없고 `C:\deploy`에도 없음. 프로덕션 사이트로 보지 않음.
 
 ---
@@ -242,6 +283,7 @@ Nginx에 안 묶인 것:
 | Jenkins | O |
 | Nginx | X (서비스 아님, 수동) |
 | 가챠 | X (콘솔 실행) |
+| Technical-Blog | 로그온 시 `blog-stack` (NSSM Start는 관리자 권한 필요) |
 | win-acme 인증서 갱신 작업 | O (`win-acme-renew`, 사용자 로그온 필요) |
 
 ---
@@ -255,6 +297,7 @@ C:\
 │   │   ├── frontend\       Next.js
 │   │   └── backend\        app.jar
 │   ├── gitjuyoung\         가챠 (송주영)
+│   ├── blog\               Technical-Blog
 │   ├── server-infra\       서버 공통 인프라 (인증서 갱신, 별도 GitHub)
 │   └── PRODUCTION.md       이 문서
 ├── Nginx\                  웹서버

@@ -6,14 +6,23 @@ Windows 프로덕션 서버 공통 인프라 저장소.
 
 - https://forum.rjsgud.com
 - https://gacha.rjsgud.com
+- https://study.rjsgud.com
+- http://jenkins.rjsgud.com (Cloudflare A레코드 후 HTTPS)
 
-가챠 앱(`gitjuyoung`)이나 포럼 앱 코드와 섞지 않는다. 인증서·Nginx·배포 문서만 여기 둔다.
+가챠 앱(`gitjuyoung`)이나 포럼/블로그 앱 코드와 섞지 않는다. 인증서·Nginx·배포 문서만 여기 둔다.
 
 서버 실제 경로: `C:\deploy\server-infra`
 
+## Nginx
+
+실제 적용 파일: `C:\Nginx\nginx-1.28.0\conf\nginx.conf`  
+저장소 사본: [nginx/nginx.conf](./nginx/nginx.conf)
+
+인증서 PEM은 git에 넣지 않는다. 위치는 `C:\Nginx\ssl\`.
+
 ## 인증서 자동 갱신
 
-매일 09:00에 Windows 작업 `win-acme-renew`가 아래 스크립트를 실행한다. forum/gacha 인증서를 같이 갱신한다.
+매일 09:00에 Windows 작업 `win-acme-renew`가 아래 스크립트를 실행한다. forum/gacha/study 인증서를 같이 갱신한다.
 
 | 파일 | 역할 |
 |------|------|
