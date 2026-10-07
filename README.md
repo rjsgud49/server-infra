@@ -7,6 +7,7 @@ Windows 프로덕션 서버 공통 인프라 저장소.
 - https://forum.rjsgud.com
 - https://gacha.rjsgud.com
 - https://study.rjsgud.com
+- http://budget.rjsgud.com (Cloudflare A레코드 후 HTTPS)
 - http://jenkins.rjsgud.com (Cloudflare A레코드 후 HTTPS)
 
 가챠 앱(`gitjuyoung`)이나 포럼/블로그 앱 코드와 섞지 않는다. 인증서·Nginx·배포 문서만 여기 둔다.

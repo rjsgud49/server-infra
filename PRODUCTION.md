@@ -3,13 +3,14 @@
 작성일: 2026-09-18  
 서버: Windows (`C:\` 루트에 인프라 + `C:\deploy`에 앱)
 
-지금 **외부에 열려 있는 프로덕션 웹 프로젝트는 3개**다. Jenkins는 `jenkins.rjsgud.com` Nginx HTTP 프록시까지 넣어 두었고, Cloudflare A레코드가 생기면 HTTPS로 올린다.
+지금 **외부에 열려 있는 프로덕션 웹 프로젝트는 4개**다. Jenkins는 `jenkins.rjsgud.com` Nginx HTTP 프록시까지 넣어 두었고, Cloudflare A레코드가 생기면 HTTPS로 올린다. 가계부(`budget.rjsgud.com`)는 A레코드와 인증서 발급 전까지 HTTP 프록시만 준비되어 있다.
 
 | # | 도메인 | 앱 | 배포 경로 | 현재 상태 |
 |---|--------|----|-----------|-----------|
 | 1 | https://forum.rjsgud.com | 포럼 (프론트 Next.js + 백엔드 Spring Boot) | `C:\deploy\forum` | 프로세스 기동 중 (NSSM) |
 | 2 | https://gacha.rjsgud.com | 가챠 수집가 (React + Express) | `C:\deploy\gitjuyoung\송주영` | 프로세스 기동 중 (콘솔 `npm run server`) |
 | 3 | https://study.rjsgud.com | Technical-Blog (Next.js + NestJS) | `C:\deploy\blog` | 프로세스 기동 중 (로그온 작업 `blog-stack`) |
+| 4 | http://budget.rjsgud.com | 가계부 (Next.js + Express + MySQL) | `C:\deploy\budget-book` | 프로세스 기동 중. 로그온 작업 `budget-stack`. DNS A레코드 필요 |
 
 Nginx `server_name` 기준으로 포럼·가챠·스터디가 HTTPS로 열려 있고, Jenkins는 `jenkins.rjsgud.com` HTTP 프록시가 들어가 있다.
 
@@ -35,7 +36,11 @@ Nginx  :80 / :443     ← 웹서버 + HTTPS 종료 + 리버스 프록시
         /          → 127.0.0.1:3001   blog-frontend (Next.js)
         /api       → 127.0.0.1:4000   blog-backend  (NestJS)
 
-MySQL  :3306          ← 공통 DB (forum/gacha/blog)
+  └─ budget.rjsgud.com
+        /          → 127.0.0.1:3012   budget-frontend (Next.js)
+        /api       → 127.0.0.1:4012   budget-backend  (Express)
+
+MySQL  :3306          ← 공통 DB (forum/gacha/blog/budget_book)
 Jenkins :8000         ← CI. Nginx `jenkins.rjsgud.com` → 127.0.0.1:8000
 ```
 
@@ -98,6 +103,26 @@ GitHub: https://github.com/rjsgud49/Technical-Blog.git
 도메인: `study.rjsgud.com` (A레코드 `220.94.77.88`). HTTPS는 win-acme 자동 갱신 대상.
 
 GitHub `main` 푸시 → Jenkins가 약 5분 안에 받아 빌드하고 `:4000` / `:3001`을 재시작한다.
+
+---
+
+## 4. 가계부 — `budget.rjsgud.com`
+
+경로: `C:\deploy\budget-book`  
+GitHub: https://github.com/rjsgud49/Budget-book.git
+
+| 구분 | 내용 |
+|------|------|
+| 프론트 | Next.js 14, 포트 **3012** |
+| 백엔드 | Express, 포트 **4012**, prefix `/api` |
+| DB | MySQL `budget_book` |
+| 기동 | 로그온 작업 `budget-stack`이 `scripts/deploy-restart.ps1`로 API :4012, 웹 :3012를 띄운다 |
+| 비밀 | `C:\deploy\budget-book\backend\.env` 만. git에 없음 |
+| 배포 | 저장소 `Jenkinsfile` 기준. Jenkins job `budget_book`은 아직 등록 전 |
+
+접속 비밀번호는 `ACCESS_PASSWORD`다. 지출 API는 로그인 세션 쿠키가 있을 때만 열린다.
+
+도메인 A레코드 `budget.rjsgud.com` → `220.94.77.88` 이 생기기 전에는 Nginx HTTP 블록만 있다. 레코드가 생기면 win-acme로 인증서를 발급하고 HTTPS 리다이렉트를 붙인다.
 
 ---
 
@@ -255,6 +280,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File C:\deploy\server-infra\scrip
 | 8787 | node (콘솔) | 가챠 API + 정적 파일 |
 | 4000 | node | Technical-Blog API |
 | 3001 | node | Technical-Blog 프론트 |
+| 4012 | node | 가계부 API |
+| 3012 | node | 가계부 프론트 |
 | 3306 | mysqld | MySQL 8.0 |
 | 8000 | java (Jenkins) | Jenkins CI |
 
@@ -284,6 +311,7 @@ GitHub webhook URL: `http://<서버IP>:8000/github-webhook/`
 | Nginx | X (서비스 아님, 수동) |
 | 가챠 | X (콘솔 실행) |
 | Technical-Blog | 로그온 시 `blog-stack` (NSSM Start는 관리자 권한 필요) |
+| 가계부 | 로그온 시 `budget-stack` |
 | win-acme 인증서 갱신 작업 | O (`win-acme-renew`, 사용자 로그온 필요) |
 
 ---
@@ -298,6 +326,7 @@ C:\
 │   │   └── backend\        app.jar
 │   ├── gitjuyoung\         가챠 (송주영)
 │   ├── blog\               Technical-Blog
+│   ├── budget-book\        가계부
 │   ├── server-infra\       서버 공통 인프라 (인증서 갱신, 별도 GitHub)
 │   └── PRODUCTION.md       이 문서
 ├── Nginx\                  웹서버
