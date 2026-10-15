@@ -3,7 +3,7 @@
 작성일: 2026-09-18  
 서버: Windows (`C:\` 루트에 인프라 + `C:\deploy`에 앱)
 
-지금 **외부에 열려 있는 프로덕션 웹 프로젝트는 5개**다. Jenkins는 `jenkins.rjsgud.com` Nginx HTTP 프록시까지 넣어 두었고, Cloudflare A레코드가 생기면 HTTPS로 올린다. 가계부(`budget.rjsgud.com`)와 도리토스 타임라인(`doritos.rjsgud.com`)은 A레코드와 인증서 발급 전까지 HTTP 프록시만 준비되어 있다.
+지금 **외부에 열려 있는 프로덕션 웹 프로젝트는 5개**다. Jenkins는 `jenkins.rjsgud.com` Nginx HTTP 프록시까지 넣어 두었고, Cloudflare A레코드가 생기면 HTTPS로 올린다. 가계부(`budget.rjsgud.com`)는 A레코드와 인증서 발급 전까지 HTTP 프록시만 준비되어 있다.
 
 | # | 도메인 | 앱 | 배포 경로 | 현재 상태 |
 |---|--------|----|-----------|-----------|
@@ -11,9 +11,9 @@
 | 2 | https://gacha.rjsgud.com | 가챠 수집가 (React + Express) | `C:\deploy\gitjuyoung\송주영` | 프로세스 기동 중 (콘솔 `npm run server`) |
 | 3 | https://study.rjsgud.com | Technical-Blog (Next.js + NestJS) | `C:\deploy\blog` | 프로세스 기동 중 (로그온 작업 `blog-stack`) |
 | 4 | http://budget.rjsgud.com | 가계부 (Next.js + Express + MySQL) | `C:\deploy\budget-book` | 프로세스 기동 중. 로그온 작업 `budget-stack`. DNS A레코드 필요 |
-| 5 | http://doritos.rjsgud.com | 도리토스 타임라인 (Next.js) | `C:\deploy\doritos-timeline` | 프로세스 기동 중. 로그온 작업 `doritos-stack`. DNS A레코드 필요 |
+| 5 | https://doritos.rjsgud.com | 도리토스 타임라인 (Next.js) | `C:\deploy\doritos-timeline` | 프로세스 기동 중. 로그온 작업 `doritos-stack`. HTTPS |
 
-Nginx `server_name` 기준으로 포럼·가챠·스터디가 HTTPS로 열려 있고, Jenkins·가계부·도리토스 타임라인은 HTTP 프록시가 들어가 있다.
+Nginx `server_name` 기준으로 포럼·가챠·스터디·도리토스 타임라인이 HTTPS로 열려 있고, Jenkins·가계부는 HTTP 프록시가 들어가 있다.
 
 ---
 
@@ -141,7 +141,7 @@ GitHub: https://github.com/rjsgud49/doritos-timeline.git
 | 기동 | 로그온 작업 `doritos-stack`이 `scripts/doritos-restart.ps1`로 웹을 띄운다 |
 | 배포 | `main`을 `C:\deploy\doritos-timeline`에 받아 `npm ci` 후 `npm run build`, 그다음 재시작 |
 
-도메인 A레코드 `doritos.rjsgud.com` → `220.94.77.88` 이 생기기 전에는 Nginx HTTP 블록만 있다. 레코드가 생기면 win-acme로 인증서를 발급하고 HTTPS 리다이렉트를 붙인다.
+도메인: `doritos.rjsgud.com` (A레코드 `220.94.77.88`). HTTPS는 win-acme 자동 갱신 대상.
 
 ---
 
@@ -248,6 +248,7 @@ Let’s Encrypt와 대화해서 인증서를 받아 오는 프로그램이다. �
 | forum.rjsgud.com | `C:\certificates` | `C:\Nginx\ssl\forum.rjsgud.com-*.pem` |
 | gacha.rjsgud.com | `C:\certificates` | `C:\Nginx\ssl\gacha.rjsgud.com-*.pem` |
 | study.rjsgud.com | `C:\certificates` | `C:\Nginx\ssl\study.rjsgud.com-*.pem` |
+| doritos.rjsgud.com | `C:\certificates` | `C:\Nginx\ssl\doritos.rjsgud.com-*.pem` |
 
 Let’s Encrypt 인증서는 90일짜리다. 만료 전에 자동 갱신되도록 Windows 작업 스케줄러가 매일 09:00에 스크립트를 돌린다.
 

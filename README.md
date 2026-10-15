@@ -8,7 +8,7 @@ Windows 프로덕션 서버 공통 인프라 저장소.
 - https://gacha.rjsgud.com
 - https://study.rjsgud.com
 - http://budget.rjsgud.com (Cloudflare A레코드 후 HTTPS)
-- http://doritos.rjsgud.com (Cloudflare A레코드 후 HTTPS)
+- https://doritos.rjsgud.com
 - http://jenkins.rjsgud.com (Cloudflare A레코드 후 HTTPS)
 
 가챠 앱(`gitjuyoung`)이나 포럼/블로그 앱 코드와 섞지 않는다. 인증서·Nginx·배포 문서만 여기 둔다.
@@ -24,7 +24,7 @@ Windows 프로덕션 서버 공통 인프라 저장소.
 
 ## 인증서 자동 갱신
 
-매일 09:00에 Windows 작업 `win-acme-renew`가 아래 스크립트를 실행한다. forum/gacha/study 인증서를 같이 갱신한다.
+매일 09:00에 Windows 작업 `win-acme-renew`가 아래 스크립트를 실행한다. forum/gacha/study/doritos 인증서를 같이 갱신한다.
 
 | 파일 | 역할 |
 |------|------|
